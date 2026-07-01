@@ -1,3 +1,13 @@
+.otp-hint { margin-bottom:6px; }
+.drawer-logo { margin-bottom:20px; }
+.options-remember { display:flex; align-items:center; gap:6px; }
+.auth-hint { text-align:center; color:#64748b; font-size:14px; margin-bottom:18px; }
+.back-link-row { margin-top:16px; }
+.tab-hidden { display:none; }
+.profile-divider { border:none; border-top:1px solid #f1f5f9; margin:16px 0; }
+.profile-section-label { font-size:14px; font-weight:700; color:#475569; text-transform:uppercase; letter-spacing:.5px; margin-bottom:12px; }
+.profile-success { margin-top:10px; }
+
 /* ── RESET & BASE ─────────────────────────────── */
 *, *::before, *::after { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
 html { font-size:16px; }
@@ -26,18 +36,33 @@ input, select, button { font-size:16px; /* prevent iOS zoom */ }
 .auth-container { min-height:100vh; display:flex; justify-content:center; align-items:flex-start; padding:20px; padding-top:max(40px,5vh); }
 .auth-card { width:100%; max-width:420px; background:#fff; padding:clamp(24px,6vw,36px); border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,.09); }
 .auth-card h2 { text-align:center; margin-bottom:24px; font-size:22px; color:#0f172a; }
+.auth-card > p { line-height:1.5; }
 .form-group { margin-bottom:14px; }
 .form-group label { display:block; margin-bottom:6px; font-size:13px; font-weight:600; color:#475569; text-transform:uppercase; letter-spacing:.4px; }
 .form-group input { width:100%; padding:13px 14px; border:1.5px solid #cbd5e1; border-radius:10px; font-size:15px; outline:none; transition:border .2s; background:#fff; }
 .form-group input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-.full-width { width:100%; padding:14px; background:#2563eb; color:#fff; border-radius:10px; font-size:15px; font-weight:600; margin-top:6px; transition:opacity .2s; }
+.full-width { width:100%; padding:14px; background:#2563eb; color:#fff; border-radius:10px; font-size:15px; font-weight:600; margin-top:6px; transition:opacity .2s,transform .1s; }
 .full-width:hover { opacity:.9; }
+.full-width:active { transform:scale(.98); }
+.full-width:disabled { opacity:.6; cursor:not-allowed; transform:none; }
 .options { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; font-size:13px; color:#475569; flex-wrap:wrap; gap:8px; }
 .options a { color:#2563eb; font-weight:500; }
 .bottom-text { text-align:center; margin-top:18px; font-size:13px; color:#64748b; }
 .bottom-text a { color:#2563eb; font-weight:600; }
 .error-msg { color:#ef4444; font-size:13px; text-align:center; margin-top:10px; padding:8px; background:#fef2f2; border-radius:8px; display:none; }
 .success-msg { color:#16a34a; font-size:13px; text-align:center; margin-top:10px; padding:8px; background:#f0fdf4; border-radius:8px; display:none; }
+
+/* ── OTP VERIFICATION ─────────────────────────── */
+.otp-inputs { display:flex; gap:10px; justify-content:center; margin:18px 0; }
+.otp-inputs input {
+  width:44px; height:52px; text-align:center; font-size:22px; font-weight:700;
+  border:1.5px solid #cbd5e1; border-radius:10px; outline:none; background:#fff; color:#0f172a;
+  transition:border .2s,box-shadow .2s;
+}
+.otp-inputs input:focus { border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+.resend-row { text-align:center; font-size:13px; color:#64748b; margin-top:6px; }
+.resend-row a { color:#2563eb; cursor:pointer; font-weight:600; }
+.resend-row a.disabled { color:#94a3b8; pointer-events:none; }
 
 /* ── DASHBOARD SHELL ──────────────────────────── */
 #page-dashboard.active { display:flex; flex-direction:column; min-height:100vh; }
@@ -87,8 +112,9 @@ input, select, button { font-size:16px; /* prevent iOS zoom */ }
 .add-btn:active { transform:scale(.98); }
 
 /* ── FILTER BAR ───────────────────────────────── */
-.filter-bar { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px; -webkit-overflow-scrolling:touch; scrollbar-width:none; }
+.filter-bar { display:flex; gap:6px; margin-bottom:12px; overflow-x:auto; padding-bottom:4px; }
 .filter-bar::-webkit-scrollbar { display:none; }
+@supports (scrollbar-width: none) { .filter-bar { scrollbar-width:none; } }
 .filter-bar button { padding:7px 14px; border-radius:999px; font-size:12px; font-weight:600; background:#f1f5f9; color:#64748b; white-space:nowrap; flex-shrink:0; transition:all .2s; }
 .filter-bar button.active { background:#2563eb; color:#fff; }
 
@@ -198,6 +224,13 @@ body.dark .mobile-header { background:#020617; }
 body.dark .drawer { background:#020617; }
 body.dark .toggle-slider { background:#475569; }
 
+/* Dark mode — OTP boxes + resend link */
+body.dark .otp-inputs input { background:#334155; border-color:#475569; color:#e2e8f0; }
+body.dark .otp-inputs input:focus { border-color:#3b82f6; }
+body.dark .resend-row { color:#94a3b8; }
+body.dark .resend-row a.disabled { color:#64748b; }
+body.dark .auth-card > p { color:#94a3b8; }
+
 /* ── RESPONSIVE BREAKPOINTS ───────────────────── */
 /* Tablet (641–1023px): sidebar hidden, hamburger shown, no bottom nav */
 @media (max-width:1023px) {
@@ -214,6 +247,14 @@ body.dark .toggle-slider { background:#475569; }
   .toast { bottom:calc(70px + env(safe-area-inset-bottom) + 10px); }
   .auth-container { padding-top:20px; }
   .section-card { padding:14px; }
+  .otp-inputs { gap:7px; }
+  .otp-inputs input { width:38px; height:46px; font-size:20px; }
+}
+
+/* Very narrow phones: shrink OTP boxes further so all 6 fit without scrolling */
+@media (max-width:360px) {
+  .otp-inputs { gap:5px; }
+  .otp-inputs input { width:34px; height:44px; font-size:18px; }
 }
 
 /* Desktop (≥1024px): full sidebar, no mobile ui */

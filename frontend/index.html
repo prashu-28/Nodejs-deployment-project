@@ -2,10 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#2563eb">
 <title>Smart To-Do Manager</title>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"><link rel="stylesheet" href="style.css">
 </head><body>
@@ -16,8 +15,8 @@
 <!-- DRAWER (mobile/tablet) -->
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
-  <button class="drawer-close" onclick="closeDrawer()"><i class="fa fa-times"></i></button>
-  <div class="logo" style="margin-bottom:20px;"><h2><i class="fa-solid fa-check-double"></i> ToDoPro</h2></div>
+  <button class="drawer-close" onclick="closeDrawer()" title="Close menu"><i class="fa fa-times"></i></button>
+  <div class="logo drawer-logo"><h2><i class="fa-solid fa-check-double"></i> ToDoPro</h2></div>
   <nav>
     <ul>
       <li class="active" id="dnav-dashboard"><a onclick="switchTab('dashboard');closeDrawer()"><i class="fa-solid fa-house"></i> Dashboard</a></li>
@@ -59,7 +58,7 @@
         <input type="password" id="loginPassword" placeholder="••••••••" autocomplete="current-password">
       </div>
       <div class="options">
-        <label style="display:flex;align-items:center;gap:6px;"><input type="checkbox" id="rememberMe"> Remember me</label>
+        <label class="options-remember"><input type="checkbox" id="rememberMe"> Remember me</label>
         <a onclick="showPage('page-forgot')">Forgot password?</a>
       </div>
       <button class="full-width" onclick="doLogin()">Login</button>
@@ -102,19 +101,68 @@
   </div>
 </div>
 
-<!-- ══ PAGE: FORGOT PASSWORD ══════════════════════ -->
+<!-- ══ PAGE: FORGOT PASSWORD (Step 1 — request OTP) ══════ -->
 <div class="page" id="page-forgot">
   <div class="auth-container">
     <div class="auth-card">
       <h2>Reset Password</h2>
-      <p style="text-align:center;color:#64748b;font-size:14px;margin-bottom:18px;">Enter your email and we'll send a reset link.</p>
+      <p class="auth-hint">Enter your email and we'll send you a 6-digit code.</p>
       <div class="form-group">
         <label>Email</label>
-        <input type="email" id="forgotEmail" placeholder="you@email.com">
+        <input type="email" id="forgotEmail" placeholder="you@email.com" autocomplete="email">
       </div>
-      <button class="full-width" onclick="doForgot()">Send Reset Link</button>
+      <button class="full-width" onclick="doForgot()" id="forgotBtn">Send Code</button>
+      <div class="error-msg" id="forgotError"></div>
       <div class="success-msg" id="forgotSuccess"></div>
-      <p class="bottom-text" style="margin-top:16px;"><a onclick="showPage('page-login')">← Back to login</a></p>
+      <p class="bottom-text back-link-row"><a onclick="showPage('page-login')">← Back to login</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: OTP VERIFICATION (Step 2) ═══════════════════ -->
+<div class="page" id="page-otp">
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Enter Verification Code</h2>
+      <p class="auth-hint otp-hint">
+        We sent a 6-digit code to <strong id="otpEmailLabel"></strong>
+      </p>
+      <div class="otp-inputs" id="otpInputs">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 1" aria-label="OTP digit 1">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 2" aria-label="OTP digit 2">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 3" aria-label="OTP digit 3">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 4" aria-label="OTP digit 4">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 5" aria-label="OTP digit 5">
+        <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]*" title="OTP digit 6" aria-label="OTP digit 6">
+      </div>
+      <button class="full-width" onclick="doVerifyOtp()">Verify Code</button>
+      <div class="error-msg" id="otpError"></div>
+      <div class="success-msg" id="otpSuccess"></div>
+      <div class="resend-row">
+        Didn't get it? <a id="resendLink" onclick="resendOtp()">Resend code</a>
+      </div>
+      <p class="bottom-text back-link-row"><a onclick="showPage('page-forgot')">← Use a different email</a></p>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAGE: RESET PASSWORD (Step 3) ═════════════════════ -->
+<div class="page" id="page-reset">
+  <div class="auth-container">
+    <div class="auth-card">
+      <h2>Set New Password</h2>
+      <p class="auth-hint">Choose a new password for your account.</p>
+      <div class="form-group">
+        <label>New Password</label>
+        <input type="password" id="resetPassword" placeholder="Min 6 characters" autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label>Confirm New Password</label>
+        <input type="password" id="resetConfirm" placeholder="Repeat password" autocomplete="new-password">
+      </div>
+      <button class="full-width" onclick="doResetPassword()">Reset Password</button>
+      <div class="error-msg" id="resetError"></div>
+      <div class="success-msg" id="resetSuccess"></div>
     </div>
   </div>
 </div>
@@ -126,7 +174,7 @@
   <div class="mobile-header">
     <div class="mobile-header-inner">
       <h2><i class="fa-solid fa-check-double"></i> ToDoPro</h2>
-      <button class="hamburger" onclick="openDrawer()"><i class="fa-solid fa-bars"></i></button>
+      <button class="hamburger" onclick="openDrawer()" title="Open menu"><i class="fa-solid fa-bars"></i></button>
     </div>
   </div>
 
@@ -172,12 +220,12 @@
           <div class="add-task-form">
             <input type="text" id="taskInput" placeholder="What needs to be done?" autocomplete="off">
             <div class="form-row">
-              <select id="priority">
+              <select id="priority" title="Task priority">
                 <option value="High">🔴 High</option>
                 <option value="Medium" selected>🟡 Medium</option>
                 <option value="Low">🟢 Low</option>
               </select>
-              <input type="date" id="dueDate">
+              <input type="date" id="dueDate" title="Due date">
             </div>
             <button class="add-btn" onclick="addTask()"><i class="fa-solid fa-plus"></i> Add Task</button>
           </div>
@@ -198,7 +246,7 @@
       </div>
 
       <!-- ─ PROFILE TAB ─ -->
-      <div id="tab-profile" style="display:none;">
+      <div id="tab-profile" class="tab-hidden">
         <div class="section-card">
           <div class="profile-wrap">
             <div class="profile-head">
@@ -206,34 +254,34 @@
               <h2 id="profileName">User Name</h2>
               <p id="profileEmail">user@email.com</p>
             </div>
-            <hr style="border:none;border-top:1px solid #f1f5f9;margin:16px 0;">
-            <h3 style="font-size:14px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;">Update Info</h3>
+            <hr class="profile-divider">
+            <h3 class="profile-section-label">Update Info</h3>
             <div class="profile-form">
-              <input type="text" id="newName" placeholder="Full name">
-              <input type="email" id="newEmail" placeholder="Email address">
+              <input type="text" id="newName" placeholder="Full name" title="Full name">
+              <input type="email" id="newEmail" placeholder="Email address" title="Email address">
               <button class="save-btn" onclick="updateProfile()">Save Changes</button>
             </div>
-            <div class="success-msg" id="profileSuccess" style="margin-top:10px;"></div>
+            <div class="success-msg profile-success" id="profileSuccess"></div>
           </div>
         </div>
       </div>
 
       <!-- ─ SETTINGS TAB ─ -->
-      <div id="tab-settings" style="display:none;">
+      <div id="tab-settings" class="tab-hidden">
         <div class="section-card">
           <div class="settings-wrap">
             <h2>Settings</h2>
             <div class="setting-row">
               <div class="setting-info"><h3>Dark Mode</h3><p>Toggle dark appearance</p></div>
               <label class="toggle-switch">
-                <input type="checkbox" id="darkToggle" onchange="toggleDark()">
+                <input type="checkbox" id="darkToggle" onchange="toggleDark()" title="Toggle dark mode" aria-label="Toggle dark mode">
                 <span class="toggle-slider"></span>
               </label>
             </div>
             <div class="setting-row">
               <div class="setting-info"><h3>Notifications</h3><p>Browser alerts for tasks</p></div>
               <label class="toggle-switch">
-                <input type="checkbox" id="notifToggle" onchange="toggleNotif()">
+                <input type="checkbox" id="notifToggle" onchange="toggleNotif()" title="Toggle notifications" aria-label="Toggle notifications">
                 <span class="toggle-slider"></span>
               </label>
             </div>

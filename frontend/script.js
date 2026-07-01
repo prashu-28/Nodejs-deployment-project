@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════════
    CONFIG
 ══════════════════════════════════════════════ */
-const API = "http://32.194.198.169:3000";
+const API = "http://32.194.198.169:3000"; // change to your backend URL
 
 /* ══════════════════════════════════════════════
    DRAWER
@@ -174,14 +174,236 @@ async function enterDashboard() {
 }
 
 /* ══════════════════════════════════════════════
-   FORGOT PASSWORD
+   FORGOT / RESET PASSWORD  (3-step OTP flow)
+   Step 1: POST /forgot-password   { email }              → sends OTP by email
+   Step 2: POST /verify-otp        { email, otp }          → returns resetToken
+   Step 3: POST /reset-password    { email, resetToken, newPassword }
 ══════════════════════════════════════════════ */
-function doForgot() {
+
+// Holds state between the 3 steps of the reset flow
+const resetState = { email: '', resetToken: '', cooldown: 0, cooldownTimer: null };
+
+/* ── Step 1: request OTP ─────────────────────── */
+async function doForgot() {
   const email = document.getElementById('forgotEmail').value.trim();
-  if (!email) return;
+  const err = document.getElementById('forgotError');
   const suc = document.getElementById('forgotSuccess');
-  suc.textContent = 'If this email is registered, a reset link was sent.';
-  suc.style.display = 'block';
+  err.style.display = 'none';
+  suc.style.display = 'none';
+
+  if (!email) {
+    err.textContent = 'Please enter your email.';
+    err.style.display = 'block';
+    return;
+  }
+
+  const btn = document.getElementById('forgotBtn');
+  btn.disabled = true;
+  btn.textContent = 'Sending…';
+
+  try {
+    const res = await fetch(`${API}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = data.message || 'Could not send code.';
+      err.style.display = 'block';
+      return;
+    }
+
+    resetState.email = email;
+    document.getElementById('otpEmailLabel').textContent = email;
+    clearOtpInputs();
+    startResendCooldown(60);
+    showPage('page-otp');
+    showToast('Code sent! Check your inbox.');
+
+  } catch (e) {
+    err.textContent = 'Cannot reach server. Is it running?';
+    err.style.display = 'block';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Code';
+  }
+}
+
+async function resendOtp() {
+  const link = document.getElementById('resendLink');
+  if (link.classList.contains('disabled')) return;
+  if (!resetState.email) { showPage('page-forgot'); return; }
+
+  try {
+    const res = await fetch(`${API}/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetState.email })
+    });
+    await res.json();
+    startResendCooldown(60);
+    clearOtpInputs();
+    showToast('A new code has been sent.');
+  } catch (e) {
+    showToast('Could not resend code.', 'error');
+  }
+}
+
+function startResendCooldown(seconds) {
+  const link = document.getElementById('resendLink');
+  resetState.cooldown = seconds;
+  link.classList.add('disabled');
+
+  clearInterval(resetState.cooldownTimer);
+  resetState.cooldownTimer = setInterval(() => {
+    resetState.cooldown--;
+    if (resetState.cooldown <= 0) {
+      clearInterval(resetState.cooldownTimer);
+      link.textContent = 'Resend code';
+      link.classList.remove('disabled');
+    } else {
+      link.textContent = `Resend code (${resetState.cooldown}s)`;
+    }
+  }, 1000);
+}
+
+/* ── OTP input box behavior (auto-advance / backspace / paste) ── */
+function setupOtpBoxes() {
+  const boxes = Array.from(document.querySelectorAll('#otpInputs input'));
+  boxes.forEach((box, i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/[^0-9]/g, '').slice(0, 1);
+      if (box.value && i < boxes.length - 1) boxes[i + 1].focus();
+    });
+    box.addEventListener('keydown', (e) => {
+      if (e.key === 'Backspace' && !box.value && i > 0) boxes[i - 1].focus();
+      if (e.key === 'Enter') doVerifyOtp();
+    });
+    box.addEventListener('paste', (e) => {
+      e.preventDefault();
+      const digits = (e.clipboardData.getData('text') || '').replace(/[^0-9]/g, '').slice(0, boxes.length);
+      digits.split('').forEach((d, idx) => { if (boxes[idx]) boxes[idx].value = d; });
+      const next = boxes[Math.min(digits.length, boxes.length - 1)];
+      if (next) next.focus();
+    });
+  });
+}
+
+function clearOtpInputs() {
+  document.querySelectorAll('#otpInputs input').forEach(b => b.value = '');
+  const first = document.querySelector('#otpInputs input');
+  if (first) first.focus();
+}
+
+function getOtpValue() {
+  return Array.from(document.querySelectorAll('#otpInputs input')).map(b => b.value).join('');
+}
+
+/* ── Step 2: verify OTP ──────────────────────── */
+async function doVerifyOtp() {
+  const err = document.getElementById('otpError');
+  const suc = document.getElementById('otpSuccess');
+  err.style.display = 'none';
+  suc.style.display = 'none';
+
+  const otp = getOtpValue();
+  if (otp.length !== 6) {
+    err.textContent = 'Please enter the full 6-digit code.';
+    err.style.display = 'block';
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/verify-otp`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: resetState.email, otp })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = data.message || 'Invalid code.';
+      err.style.display = 'block';
+      return;
+    }
+
+    resetState.resetToken = data.resetToken;
+    suc.textContent = 'Code verified!';
+    suc.style.display = 'block';
+
+    document.getElementById('resetPassword').value = '';
+    document.getElementById('resetConfirm').value = '';
+    setTimeout(() => showPage('page-reset'), 500);
+
+  } catch (e) {
+    err.textContent = 'Cannot reach server. Is it running?';
+    err.style.display = 'block';
+  }
+}
+
+/* ── Step 3: set new password ────────────────── */
+async function doResetPassword() {
+  const err = document.getElementById('resetError');
+  const suc = document.getElementById('resetSuccess');
+  err.style.display = 'none';
+  suc.style.display = 'none';
+
+  const pw   = document.getElementById('resetPassword').value;
+  const conf = document.getElementById('resetConfirm').value;
+
+  if (!pw || pw.length < 6) {
+    err.textContent = 'Password must be at least 6 characters.';
+    err.style.display = 'block';
+    return;
+  }
+  if (pw !== conf) {
+    err.textContent = 'Passwords do not match.';
+    err.style.display = 'block';
+    return;
+  }
+  if (!resetState.resetToken) {
+    err.textContent = 'Your session expired. Please start over.';
+    err.style.display = 'block';
+    setTimeout(() => showPage('page-forgot'), 1200);
+    return;
+  }
+
+  try {
+    const res = await fetch(`${API}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: resetState.email,
+        resetToken: resetState.resetToken,
+        newPassword: pw
+      })
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      err.textContent = data.message || 'Reset failed. Please start over.';
+      err.style.display = 'block';
+      return;
+    }
+
+    suc.textContent = 'Password reset! Redirecting to login…';
+    suc.style.display = 'block';
+
+    document.getElementById('loginEmail').value = resetState.email;
+
+    // Reset local state
+    resetState.email = '';
+    resetState.resetToken = '';
+
+    setTimeout(() => showPage('page-login'), 1500);
+    showToast('Password reset successful!');
+
+  } catch (e) {
+    err.textContent = 'Cannot reach server. Is it running?';
+    err.style.display = 'block';
+  }
 }
 
 /* ══════════════════════════════════════════════
@@ -442,6 +664,8 @@ document.addEventListener('keydown', e => {
 ══════════════════════════════════════════════ */
 (async function init() {
   if (localStorage.getItem('darkMode') === 'true') document.body.classList.add('dark');
+
+  setupOtpBoxes();
 
   const saved = localStorage.getItem('savedEmail');
   if (saved) {
